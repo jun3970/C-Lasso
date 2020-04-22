@@ -4,54 +4,70 @@
 clear
 global p K_max
 
-cvx_solver mosek
+% cvx_solver mosek
 
 IC_needed = 1;
 tol = 0.0001;
 R = 80;
 
-load('balancedPanelX1995.mat')
-X = [lagsaving, cpi, interest, gdp];
-y = saving;
+load('CH3-2017-09-30.mat')
+
+X = [mkt_rf, SMB, VMG];
+y = Dret_rf;
 
 % Note: Aug 4, 2018
 % A researcher asks about the time series initial value of `lagsaving` for each country.
 % The initial comes from the raw data that is longer than the compiled data for the regression,
 % which is not contained in `saving`
 
-
+% d = size(X) returns the sizes of each dimension of array X in a vector d with ndims(X) elements. 
+% [m,n] = size(X) returns the size of matrix X in separate variables m and n.
+% m = size(X, dim) returns the size of the dimension of X specified by scalar dim.
 p = size(X, 2);
-T = 15;
-N = 56;
+% L = length( X )
+% returns the length of the largest array dimension in X . For vectors, the length is simply the number of elements. For arrays with more dimensions, the length is max(size(X))
+N = length(stkcd);
+T = size(X, 1)./N;
 
 K_max = 5;
 lamb.grid = 10;
 lamb.min  = 0.2;
 lamb.max  = 2.0;
-lamb_const = lamb.min * (lamb.max / lamb.min ).^( ( (1:lamb.grid) - 1) /( lamb.grid -1 ) ); % the constant for lambda. very important!!
+% the constant for lambda. very important!!
+lamb_const = lamb.min * (lamb.max / lamb.min ).^( ( (1:lamb.grid) - 1) /( lamb.grid -1 ) ); 
 numlam = length(lamb_const);
 
-index = dataset( code, year, y, X );
+index = dataset( code, date, y, X );
 index.Properties.VarNames = {'N'  'T'  'y'  'X'};
 
 y_raw = y;
 X_raw = X;
 
 for i = 1:N
+    % Subtract the column mean from the corresponding column elements of a matrix A. Then normalize by the standard deviation.
+    % A = [1 2 10; 3 4 20; 9 6 15];
+    % C = bsxfun(@minus, A, mean(A));
+    % D = bsxfun(@rdivide, C, std(A))
     yi = y(index.N == i);
-    mean_yi = mean(yi);
-    yi = bsxfun(@minus, yi, mean(yi) );
-    y(index.N == i) = yi/std(yi, 1);
-    y_raw(index.N==i) = y(index.N == i) + mean_yi;
+    %% C = bsxfun(fun,A,B) 
+    % applies the element-wise binary operation specified by the function handle fun to arrays A and B.
+    y(index.N == i) = bsxfun(@minus, yi, mean(yi) );  
     
     Xi = X(index.N == i, : );
-    mean_Xi = mean(Xi);
     Xi = bsxfun(@minus, Xi, mean(Xi) );
-    X(index.N == i, :) = Xi./repmat( std(Xi, 1), [T 1] ) ;
-    X_raw(index.N == i, :) = X(index.N == i, :) + repmat( mean(Xi), [T 1]);
+    %% S = std(A)
+    % If A is a vector of observations, then the standard deviation is a scalar.
+    % If A is a matrix whose columns are random variables and whose rows are observations, then S is a row vector containing the standard deviations corresponding to each column.
+    % If A is a multidimensional array, then std(A) operates along the first array dimension whose size does not equal 1, treating the elements as vectors. The size of this dimension becomes 1 while the sizes of all other dimensions remain the same.
+    % By default, the standard deviation is normalized by N-1, where N is the number of observations.
+    % S = std(A,w) specifies a weighting scheme for any of the previous syntaxes. When w = 0 (default), S is normalized by N-1. When w = 1, S is normalized by the number of observations, N. w also can be a weight vector containing nonnegative elements. In this case, the length of w must equal the length of the dimension over which std is operating.
+    %% repmat(M, a, b)
+    % Repeat copies of the matrix, M, into a a-by-b block arrangement
+    % X(index.N == i, :) = Xi./repmat( std(Xi, 1), [T 1] ) ;
+    % X_raw(index.N == i, :) = X(index.N == i, :) + repmat( mean(Xi), [T 1]);
 end
 
-ds = dataset( code, year, y, X, y_raw, X_raw );
+ds = dataset( code, date, y, X, y_raw, X_raw );
 ds.Properties.VarNames = {'N'  'T'  'y'  'X' 'y_raw' 'X_raw'};
 %% initial values
 beta_hat0 = zeros(N, p);
@@ -60,6 +76,8 @@ for i = 1:N
     Xi = ds.X(ds.N == i, : );
     beta_hat0(i,:) = regress( yi , Xi );
 end
+
+
 
 %% estimation
 TT = T;
@@ -70,7 +88,7 @@ if IC_needed == 1
         disp(ll)
         
         a = ds.X \ ds.y; 
-        bias = SPJ_PLS(T,ds.y_raw, ds.X_raw);
+        bias = SPJ_PLS(T, ds.y_raw, ds.X_raw);
         a_corr = 2 * a - bias;
         IC_total(1, :) = mean( ( y - X*a_corr ).^2 );
         
@@ -78,7 +96,9 @@ if IC_needed == 1
         for K = 2:K_max
             Q = 999*zeros(K,1);
             
-            lam = lamb_const(ll)*var(y) * T^(-1/3);
+            % the parameter lambda, be related to the variance of development variable
+            % and the lenght of time periods
+            lam = lamb_const(ll)*var(y) * T^(-1/3); 
             [b_K, hat.a] = PLS_est(N, TT, y, X, beta_hat0, K, lam, R, tol); % estimation
             [~, H.b, ~, group] = report_b( b_K, hat.a, K );
             sum(group)            
@@ -114,16 +134,24 @@ if IC_needed == 1
     disp(IC_final)
 end
 
+
+
+minimum = min(min(IC_final));
+[K_num, lamb_index] = find(A == minimum)
+
+
+
 %% PLS estimation
-K = 2;
-lam = 1.5485 *var(y) * T^(-1/3);
+K = K_num;
+lam =  lamb_const(lamb_index)*var(y) * T^(-1/3);
 
 [b_K, a] = PLS_est(N, T, y, X, beta_hat0, K, lam, R, tol);
 [~, b, ~ , group] = report_b( b_K, a, K );
 
 %% post estimation
-est_lasso = zeros(p, 6);
-est_post_lasso = zeros(p, 6);
+colnum = K*3
+est_lasso = zeros(p, colnum);
+est_post_lasso = zeros(p, colnum);
 
 for i = 1:K
     NN = 1:N;
@@ -135,31 +163,35 @@ for i = 1:K
     est_post_lasso(:,(3*i-2):(3*i)) =  [post.post_a_corr, post.se, post.test_b];
 end
 
-%% display the estimates
-est_post_lasso = mat2dataset( est_post_lasso, 'VarNames', ...
-    {'g1_coef', 'g1_sd', 'g1_t', 'g2_coef', 'g2_sd', 'g2_t'});
-disp(est_post_lasso)
 
-load('country56.mat')
-country(group(:,1))
-country(group(:,2))
+save CH3-2017-09-30_result.mat
 
-g_PLS = zeros(56,1);
-g_PLS( group(:,1) == 1 ) = 1;
-g_PLS( group(:,2) == 1 ) = 2;
 
-load('group_PGMM.mat')
-g_PGMM = zeros(56,1);
-g_PGMM( group_PGMM(:,2) == 1) = 2;
-g_PGMM( group_PGMM(:,1) == 1) = 1;
-
-sum(g_PLS == g_PGMM)
-%% common FE
-
-g_index = NN;
-first_none_zero = min( NN );
-g_data = ds( ismember(ds.N, g_index), : ); % group-specific data
-post = post_est_PLS_dynamic(T, g_data);
-
-[post.post_a_corr, post.se, post.test_b]
+% %% display the estimates
+% est_post_lasso = mat2dataset( est_post_lasso, 'VarNames', ...
+%     {'g1_coef', 'g1_sd', 'g1_t', 'g2_coef', 'g2_sd', 'g2_t'});
+% disp(est_post_lasso)
+% 
+% load('country56.mat')
+% country(group(:,1))
+% country(group(:,2))
+% 
+% g_PLS = zeros(56,1);
+% g_PLS( group(:,1) == 1 ) = 1;
+% g_PLS( group(:,2) == 1 ) = 2;
+% 
+% load('group_PGMM.mat')
+% g_PGMM = zeros(56,1);
+% g_PGMM( group_PGMM(:,2) == 1) = 2;
+% g_PGMM( group_PGMM(:,1) == 1) = 1;
+% 
+% sum(g_PLS == g_PGMM)
+% %% common FE
+% 
+% g_index = NN;
+% first_none_zero = min( NN );
+% g_data = ds( ismember(ds.N, g_index), : ); % group-specific data
+% post = post_est_PLS_dynamic(T, g_data);
+% 
+% [post.post_a_corr, post.se, post.test_b]
 

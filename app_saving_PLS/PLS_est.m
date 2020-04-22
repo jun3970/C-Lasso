@@ -25,6 +25,9 @@ function [b_out, a_out] = PLS_est(N, T, y, X, b0, K, lambda, R, tol)
     
     a_old = 999 * zeros(K, p);
     optval_old = 999;
+
+    % the index of penalty factor
+    factor = [ 2 3 ];
     
     cvx_quiet(true)
     %%
@@ -35,11 +38,11 @@ function [b_out, a_out] = PLS_est(N, T, y, X, b0, K, lambda, R, tol)
             variable a(1, p);
 
             B1 = kron( b, ones(T,1) );
+            % the square residual
             Q =  1/(N*T) * sum_square(  y - sum(X .* B1, 2) );
 
             % the penalty
-            penalty = sum( norms(  b - repmat(a, N, 1), 2, 2 ) );
-
+            penalty = sum( norms(  b(:, factor) - repmat(a(:, factor), N, 1), 2, 2 ) ); 
             % objective
             minimize( Q  + lambda/N *  penalty ) ;
         cvx_end
@@ -54,7 +57,7 @@ function [b_out, a_out] = PLS_est(N, T, y, X, b0, K, lambda, R, tol)
 
                 % calculate the fixed part of the penalty
                 for kk = setdiff(1:K, k)
-                    pen(:, kk) =  norms( bsxfun(@minus, b_out(:, :, kk), a_out(kk, :) ), 2, 2 );
+                    pen(:, kk) =  norms( bsxfun(@minus, b_out(:, factor, kk), a_out(kk, factor) ), 2, 2 );
                 end
                 pen(:,k) = ones(N, 1);
                 penalty_out  =  prod(pen, 2);
@@ -67,7 +70,7 @@ function [b_out, a_out] = PLS_est(N, T, y, X, b0, K, lambda, R, tol)
                     Q =  1/(N*T) * sum_square(  y - sum(X .* B1, 2) );
 
                     % the penalty
-                    pen_k = norms(  b - repmat(a, N, 1), 2, 2 ) ;
+                    pen_k = norms(  b(:, factor) - repmat(a(:, factor), N, 1), 2, 2 ) ;
                     penalty =  penalty_out' * pen_k;
 
                     % objective
