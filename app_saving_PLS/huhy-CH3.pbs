@@ -1,0 +1,29 @@
+#!/bin/sh
+#PBS -N par-CH3-2017-09-30
+#PBS -l nodes=1:ppn=4
+#PBS -l walltime=120:00:00
+
+#PBS -V
+#PBS -S /bin/bash
+#PBS -j oe
+
+cd $PBS_O_WORKDIR
+NP=`cat $PBS_NODEFILE | wc -l`
+NN=`cat $PBS_NODEFILE | sort | uniq | tee /tmp/nodes.$$ | wc -l`
+cat $PBS_NODEFILE > /tmp/nodefile.$$
+
+echo "process will start at : "  
+date
+echo "++++++++++++++++++++++++++++++++++++++++"
+
+cd $PBS_O_WORKDIR
+matlab -nodisplay -nosplash -nojvm \
+	-r "addpath('~/git/C-Lasso/app_saving_PLS/'); parmaster; quit;"
+
+echo "++++++++++++++++++++++++++++++++++++++++"
+echo "processs will sleep 30s"  sleep 30
+echo "process end at : "  
+date
+
+rm -f /tmp/nodefile.$$
+rm -f /tmp/nodes.$$
