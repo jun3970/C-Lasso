@@ -85,7 +85,7 @@ TT = T;
 IC_total = ones(K_max, numlam );
 
 if IC_needed == 1
-    parfor ll = 1:numlam
+    for ll = 1:numlam
         disp(ll)
         
         a = ds.X \ ds.y; 
@@ -107,7 +107,7 @@ if IC_needed == 1
             post_b = zeros(N, p);
             post_a = zeros(K, p);
             if K >=2
-                for i = 1:K
+                parfor i = 1:K
                     NN = 1:N;
                     H.group = logical(group);
                     this_group = group(:,i);
@@ -123,8 +123,7 @@ if IC_needed == 1
                     end
                 end
             end
-            
-            
+                
             IC_total(K , ll) = sum(Q) / (N*T)
             
         end
@@ -135,11 +134,10 @@ if IC_needed == 1
     disp(IC_final)
 end
 
-
+delete(gcp('nocreate'))
 
 minimum = min(min(IC_final));
 [K_num, lamb_index] = find(A == minimum)
-
 
 
 %% PLS estimation
