@@ -70,6 +70,7 @@ disp(est_post_lasso)
 g_PLS = zeros(N, 1);
 g_PLS( group(:,1) == 1 ) = 1;
 g_PLS( group(:,2) == 1 ) = 2;
+g_PLS = [stkcd g_PLS];
 
 %% common FE
 g_index = NN;
@@ -79,5 +80,6 @@ post = post_est_PLS_dynamic(T, g_data);
 % display the estimates
 [post.post_a_corr, post.se, post.test_b]
 
+save RESULT_2017-09-30_6_21_CH3.mat
 csvwrite('PLS_2017-09-30_6_21_CH3.csv', est_post_lasso)
 csvwrite('group_2017-09-30_6_21_CH3.csv', g_PLS)
