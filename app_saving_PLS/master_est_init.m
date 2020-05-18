@@ -17,6 +17,9 @@ R = 80; %  maximum number of iterations
 index = dataset( code, date, y, X );
 index.Properties.VarNames = {'N'  'T'  'y'  'X'};
 
+y_raw = y;
+X_raw = X;
+
 for i = 1:N
     yi = y(index.N == i);
     y(index.N == i) = bsxfun(@minus, yi, mean(yi) );  
@@ -26,8 +29,8 @@ for i = 1:N
 end
 
 % prepare the dataset. Useful for the functions.
-ds = dataset( code, date, y, X );
-ds.Properties.VarNames = {'N'  'T'  'y'  'X'};
+ds = dataset( code, date, y, X, y_raw, X_raw );
+ds.Properties.VarNames = {'N'  'T'  'y'  'X' 'y_raw' 'X_raw'};
 %% initial values
 beta_hat0 = zeros(N, p);
 for i = 1:N
