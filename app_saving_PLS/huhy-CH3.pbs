@@ -1,6 +1,6 @@
 #!/bin/sh
 #PBS -N par-CH3-2017-09-30
-#PBS -l nodes=1:ppn=4
+#PBS -l nodes=1:ppn=1
 #PBS -l walltime=120:00:00
 
 #PBS -V
@@ -17,8 +17,8 @@ date
 echo "++++++++++++++++++++++++++++++++++++++++"
 
 cd $PBS_O_WORKDIR
-matlab -nodisplay -nosplash -nojvm \
-	-r "addpath('~/git/C-Lasso/app_saving_PLS/'); parmaster; quit;"
+matlab -nodisplay -nosplash \
+	-r "addpath('~/git/C-Lasso/app_saving_PLS/'); master; quit;"
 
 echo "++++++++++++++++++++++++++++++++++++++++"
 echo "processs will sleep 30s"  sleep 30
