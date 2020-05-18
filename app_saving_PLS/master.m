@@ -156,15 +156,29 @@ for i = 1:K
     est_post_lasso(:,(3*i-2):(3*i)) =  [post.post_a_corr, post.se, post.test_b];
 end
 
-est_post_lasso = double(est_post_lasso);
-disp(est_post_lasso)
 
-% est_post_lasso = mat2dataset( est_post_lasso, 'VarNames', ...
-%     {'g1_coef', 'g1_sd', 'g1_t', 'g2_coef', 'g2_sd', 'g2_t'});
+if K == 2
+    est_post_lasso = array2table(est_post_lasso, 'VariableNames', ...
+        ["g1_coef", "g1_sd", "g1_t", "g2_coef", "g2_sd", "g2_t"])
+elseif K == 3
+    est_post_lasso = array2table(est_post_lasso, 'VariableNames', ...
+        ["g1_coef", "g1_sd", "g1_t", "g2_coef", "g2_sd", "g2_t", "g3_coef", "g3_sd", "g3_t"])
+else
+    disp('Attention! The group number have not set in this script.')
+end
+
 
 g_PLS = zeros(N, 1);
-g_PLS( group(:,1) == 1 ) = 1;
-g_PLS( group(:,2) == 1 ) = 2;
+if K == 2
+    g_PLS( group(:,1) == 1 ) = 1;
+    g_PLS( group(:,2) == 1 ) = 2;
+elseif K == 3
+    g_PLS( group(:,1) == 1 ) = 1;
+    g_PLS( group(:,2) == 1 ) = 2;
+    g_PLS( group(:,3) == 1 ) = 3;
+end
+% Convert cell to a table and use first row as variable names
+g_PLS = array2table([stkcd g_PLS], 'VariableNames', ["Stkcd", "g_PLS"]);
 
 %% common FE
 g_index = NN;
@@ -175,5 +189,7 @@ post = post_est_PLS_dynamic(T, g_data);
 [post.post_a_corr, post.se, post.test_b]
 
 save RESULT_2017-09-30_6_21_CH3.mat
-csvwrite('PLS_2017-09-30_6_21_CH3.csv', est_post_lasso)
-csvwrite('group_2017-09-30_6_21_CH3.csv', g_PLS)
+writetable(est_post_lasso, 'PLS_2017-09-30_6_21_CH3.csv')
+writetable(g_PLS, 'group_2017-09-30_6_21_CH3.csv')
+
+
