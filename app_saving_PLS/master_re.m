@@ -9,10 +9,11 @@ global p K_max
 IC_needed = 1;
 tol = 0.0001;
 R = 80;
+quarter = '2017-12-31'
+attri  = '_6_21_CH4';
 
-load('CH3-2017-09-30.mat')
-
-X = [mkt_rf, SMB, VMG];
+load(strcat('CH4-', quarter, '.mat'))
+X = [mkt_rf, SMB, VMG, RMW];
 y = Dret_rf;
 
 % Note: Aug 4, 2018
@@ -35,11 +36,11 @@ lamb.grid = 10;
 lamb.min  = 0.2;
 lamb.max  = 2.0;
 % the constant for lambda. very important!!
-lamb_const = lamb.min * (lamb.max / lamb.min ).^( ( (1:lamb.grid) - 1) /( lamb.grid -1 ) ); 
+lamb_const = lamb.min * (lamb.max / lamb.min).^( ((1:lamb.grid) - 1) / (lamb.grid - 1) ); 
 numlam = length(lamb_const);
 
-index = dataset( code, date, y, X );
-index.Properties.VarNames = {'N'  'T'  'y'  'X'};
+index = dataset(code, date, y, X);
+index.Properties.VarNames = {'N' 'T' 'y' 'X'};
 
 y_raw = y;
 X_raw = X;
@@ -132,7 +133,7 @@ if IC_needed == 1
 end
 
 minimum = min(min(IC_final));
-[K_num, lamb_index] = find(IC_final == minimum)
+[K_num, lamb_index] = find(IC_final == minimum);
 
 %% PLS estimation
 K = K_num(1)
@@ -163,6 +164,9 @@ if K == 2
 elseif K == 3
     est_post_lasso = array2table(est_post_lasso, 'VariableNames', ...
         ["g1_coef", "g1_sd", "g1_t", "g2_coef", "g2_sd", "g2_t", "g3_coef", "g3_sd", "g3_t"])
+elseif K == 4
+    est_post_lasso = array2table(est_post_lasso, 'VariableNames', ...
+	["g1_coef", "g1_sd", "g1_t", "g2_coef", "g2_sd", "g2_t", "g3_coef", "g3_sd", "g3_t", "g4_coef", "g4_sd", "g4_t"])
 else
     disp('Attention! The group number have not set in this script.')
 end
@@ -176,6 +180,11 @@ elseif K == 3
     g_PLS( group(:,1) == 1 ) = 1;
     g_PLS( group(:,2) == 1 ) = 2;
     g_PLS( group(:,3) == 1 ) = 3;
+elseif K == 4
+    g_PLS( group(:,1) == 1 ) = 1;
+    g_PLS( group(:,2) == 1 ) = 2;
+    g_PLS( group(:,3) == 1 ) = 3;
+    g_PLS( group(:,4) == 1 ) = 4;
 end
 % Convert cell to a table and use first row as variable names
 g_PLS = array2table([stkcd g_PLS], 'VariableNames', ["Stkcd", "g_PLS"]);
@@ -188,8 +197,8 @@ post = post_est_PLS_dynamic(T, g_data);
 % display the estimates
 [post.post_a_corr, post.se, post.test_b]
 
-save RESULT_2017-09-30_6_21_CH3.mat
-writetable(est_post_lasso, 'PLS_2017-09-30_6_21_CH3.csv')
-writetable(g_PLS, 'group_2017-09-30_6_21_CH3.csv')
-
+RESULT = strcat('RESULT_', quarter, attri, '.mat');
+save(RESULT)
+writetable(est_post_lasso, ['PLS_', quarter, attri, '.csv'])
+writetable(g_PLS, ['group_', quarter, attri, '.csv'])
 

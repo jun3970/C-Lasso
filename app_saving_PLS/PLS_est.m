@@ -27,7 +27,7 @@ function [b_out, a_out] = PLS_est(N, T, y, X, b0, K, lambda, R, tol)
     optval_old = 999;
 
     % the index of penalty factor
-    factor = [ 2 3 ];
+    factor = [ 3 4];
     
     cvx_quiet(true)
     %%
